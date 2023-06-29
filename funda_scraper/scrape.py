@@ -100,7 +100,7 @@ class FundaScraper(object):
             self.find_past = find_past
 
     def fetch_links(self) -> None:
-        """Find all the available links across multiple pages."""
+        """Find all the available links across multiple pages. """
         if self.area is None or self.want_to is None:
             raise ValueError("You haven't set the area and what you're looking for.")
 
@@ -111,8 +111,13 @@ class FundaScraper(object):
         for i in tqdm(range(0, self.n_pages + 1)):
             item_list = self._get_links_from_one_page(main_url + f"p{i}")
             if len(item_list) == 0:
-                self.n_pages = i
-                break
+                # Try one more time
+                print(f"There are no listings, try again page {i}")
+                item_list = self._get_links_from_one_page(main_url + f"p{i}")
+                if len(item_list) == 0:
+                    print(f"Still no listings, skip page {i}")
+                    self.n_pages -= 1
+                    continue
             urls += item_list
         urls = list(set(urls))
         logger.info(
