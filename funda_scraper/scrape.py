@@ -11,7 +11,7 @@ from funda_scraper.preprocess import preprocess_data
 from funda_scraper.utils import logger
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
-
+import time
 
 class FundaScraper(object):
     """
@@ -109,15 +109,15 @@ class FundaScraper(object):
         urls = []
         main_url = self.site_url["close"] if self.find_past else self.site_url["open"]
         for i in tqdm(range(0, self.n_pages + 1), disable=True):
-            item_list = self._get_links_from_one_page(main_url + f"p{i}")
-            if len(item_list) == 0:
-                # Try one more time
-                print(f"There are no listings, try again page {i}")
+            for repeat_id in range(10): # Try this 10 times
                 item_list = self._get_links_from_one_page(main_url + f"p{i}")
                 if len(item_list) == 0:
-                    print(f"Still no listings, skip page {i}")
-                    self.n_pages -= 1
+                    time.sleep(1)
                     continue
+                else:
+                    break
+            if repeat_id >= 9:
+                print(f"page {i} unsuccessfull after 10 tries")
             urls += item_list
         urls = list(set(urls))
         logger.info(
