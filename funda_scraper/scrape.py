@@ -108,7 +108,7 @@ class FundaScraper(object):
 
         urls = []
         main_url = self.site_url["close"] if self.find_past else self.site_url["open"]
-        for i in tqdm(range(0, self.n_pages + 1)):
+        for i in tqdm(range(0, self.n_pages + 1), disable=True):
             item_list = self._get_links_from_one_page(main_url + f"p{i}")
             if len(item_list) == 0:
                 # Try one more time
@@ -190,7 +190,7 @@ class FundaScraper(object):
 
         # Scrape pages with multiprocessing to improve efficiency
         pools = mp.cpu_count()
-        content = process_map(self.scrape_from_url, self.links, max_workers=pools)
+        content = process_map(self.scrape_from_url, self.links, max_workers=pools, disable=True)
 
         for i, c in enumerate(content):
             df.loc[len(df)] = c
