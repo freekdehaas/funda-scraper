@@ -24,6 +24,7 @@ class FundaScraper(object):
         want_to: str = "buy",
         n_pages: int = 1,
         find_past: bool = False,
+        n_tries = 10
     ):
         self.area = area.lower().replace(" ", "-") if isinstance(area, str) else area
         self.want_to = want_to
@@ -34,6 +35,7 @@ class FundaScraper(object):
         self.clean_df = pd.DataFrame()
         self.base_url = config.base_url
         self.selectors = config.css_selector
+        self.n_tries = n_tries
 
     def __repr__(self):
         return (
@@ -109,7 +111,7 @@ class FundaScraper(object):
         urls = []
         main_url = self.site_url["close"] if self.find_past else self.site_url["open"]
         for i in tqdm(range(0, self.n_pages + 1), disable=True):
-            for repeat_id in range(10): # Try this 10 times
+            for repeat_id in range(self.n_tries):
                 item_list = self._get_links_from_one_page(main_url + f"p{i}")
                 if len(item_list) == 0:
                     time.sleep(1)
@@ -117,7 +119,7 @@ class FundaScraper(object):
                 else:
                     break
             if repeat_id >= 9:
-                print(f"page {i} unsuccessfull after 10 tries")
+                print(f"page {i} unsuccessfull after {self.n_tries} tries")
             urls += item_list
         urls = list(set(urls))
         logger.info(
