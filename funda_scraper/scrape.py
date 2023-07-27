@@ -118,7 +118,7 @@ class FundaScraper(object):
                     continue
                 else:
                     break
-            if repeat_id >= 9:
+            if repeat_id >= self.n_tries-1:
                 print(f"page {i} unsuccessfull after {self.n_tries} tries")
             urls += item_list
         urls = list(set(urls))
