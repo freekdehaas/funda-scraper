@@ -50,13 +50,13 @@ class FundaScraper(object):
         """Return the corresponding urls."""
         if self.to_buy:
             return {
-                "close": f'{self.base_url}/zoeken/koop?selected_area=%5B"{self.area}"%5D&availability=%5B"unavailable"%5D',
-                "open": f'{self.base_url}/zoeken/koop?selected_area=%5B"{self.area}"%5D',
+                "close": f'{self.base_url}/zoeken/koop?selected_area=%5B"{self.area}"%5D&availability=%5B"unavailable"%5D&sort="date_down"',
+                "open": f'{self.base_url}/zoeken/koop?selected_area=%5B"{self.area}"%5D&sort="date_down"',
             }
         else:
             return {
-                "close": f'{self.base_url}/zoeken/huur?selected_area=%5B"{self.area}"%5D&availability=%5B"unavailable"%5D',
-                "open": f'{self.base_url}/zoeken/huur?selected_area=%5B"{self.area}"%5D',
+                "close": f'{self.base_url}/zoeken/huur?selected_area=%5B"{self.area}"%5D&availability=%5B"unavailable"%5D&sort="date_down"',
+                "open": f'{self.base_url}/zoeken/huur?selected_area=%5B"{self.area}"%5D&sort="date_down"',
             }
 
     @property
