@@ -5,15 +5,16 @@ import pandas as pd
 from funda_scraper.config.core import config
 from datetime import datetime
 from datetime import timedelta
+import warnings
+import locale
 
 
 def clean_price(x: str) -> int:
     """Clean the 'price' and transform from string to integer."""
     try:
-        return int(str(x).split(" ")[1].replace(",", ""))
-    except ValueError:
-        return 0
-    except IndexError:
+        return int(str(x).split(" ")[1].replace(".", ""))
+    except (ValueError,IndexError):
+        warnings.warn(f"Could not clean {x}, returning 0 (which will be deleted)")
         return 0
 
 
@@ -23,9 +24,10 @@ def clean_year(x: str) -> int:
         return int(x)
     elif x.find("-") != -1:
         return int(x.split("-")[0])
-    elif x.find("before") != -1:
+    elif x.find("Voor") != -1:
         return int(x.split(" ")[1])
     else:
+        warnings.warn(f"Could not process {x}")
         return 0
 
 
@@ -33,23 +35,21 @@ def clean_living_area(x: str) -> int:
     """Clean the 'living_area' and transform from string to integer"""
     try:
         return int(str(x).replace(",", "").split(" m²")[0])
-    except ValueError:
-        return 0
-    except IndexError:
+    except (IndexError, ValueError):
         return 0
 
 
 def find_n_room(x: str) -> int:
     """Find the number of rooms from a string"""
-    if x.find("room") != -1:
-        return int(str(x).split("room")[0].strip())
+    if x.find("kamer") != -1:
+        return int(str(x).split("kamer")[0].strip())
     else:
         return 0
 
 
 def find_n_bedroom(x: str) -> int:
     """Find the number of bedrooms from a string"""
-    if x.find("bedroom") != -1:
+    if x.find("slaapkamer") != -1:
         return int(x.split(" ")[2].replace("(", ""))
     else:
         return 0
@@ -57,8 +57,8 @@ def find_n_bedroom(x: str) -> int:
 
 def find_n_bathroom(x: str) -> int:
     """Find the number of bathrooms from a string"""
-    if x.find("bathroom") != -1:
-        return int(str(x).split("bathroom")[0].strip())
+    if x.find("badkamer") != -1:
+        return int(str(x).split("badkamer")[0].strip())
     else:
         return 0
 
@@ -101,29 +101,30 @@ def clean_energy_label(x: str) -> str:
 
 def clean_list_date(x: str) -> Any:
     """Transform the date from string to datetime object."""
-
     def delta_now(d):
         t = timedelta(days=d)
-        return datetime.now() - t
-
+        return datetime.now().date() - t
     try:
         if (
             x.find("€") != -1
             or x.find("na") != -1
-            or x.find("Indefinite duration") != -1
+            or x.find("Onbepaalde tijd") != -1
         ):
             return "na"
-        elif x.find("month") != -1:
-            return delta_now(int(x.split("month")[0].strip()[0]) * 30)
-        elif x.find("week") != -1:
-            return delta_now(int(x.split("month")[0].strip()[0]) * 7)
-        elif x.find("Today") != -1:
-            return delta_now(1)
-        elif x.find("day") != -1:
-            return delta_now(int(x.split("month")[0].strip()))
+        elif x.find("maand") != -1:
+            return delta_now(int(x.split("maand")[0].strip()[0]) * 30) # TODO: what is the month doing in here?
+        elif x.find("weken") != -1:
+            return delta_now(int(x.split("weken")[0].strip()[0]) * 7) # TODO: what is the month doing in here?
+        elif x.find("Vandaag") != -1:
+            return delta_now(0)
+        elif x.find("dag") != -1:
+            return delta_now(int(x.split("dag")[0].strip())) # TODO: what is the month doing in here?
         else:
-            return datetime.strptime(x, "%B %d, %Y")
+            locale.setlocale(locale.LC_TIME,'nl_NL') # en_us.utf-8
+            return datetime.strptime(x, "%d %B %Y")
     except ValueError:
+        print(f"Not able to interpret {x}, returning 'na' and will be removed")
+        warnings.warn(f"Not able to interpret {x}, returning 'na' and will be removed")
         return "na"
 
 
@@ -155,7 +156,7 @@ def preprocess_data(df: pd.DataFrame, is_past: bool) -> pd.DataFrame:
     df["price_m2"] = round(df.price / df.living_area, 1)
 
     # Location
-    df["zip"] = df["zip_code"].apply(lambda x: x[:4])
+    df["zip"] = df["zip_code"].apply(lambda x: x[:7])
 
     # House layout
     df["room"] = df["num_of_rooms"].apply(find_n_room)
@@ -163,10 +164,10 @@ def preprocess_data(df: pd.DataFrame, is_past: bool) -> pd.DataFrame:
     df["bathroom"] = df["num_of_bathrooms"].apply(find_n_bathroom)
     df["energy_label"] = df["energy_label"].apply(clean_energy_label)
     df["has_balcony"] = df["exteriors"].apply(
-        lambda x: 1 if str(x).find("Balcony present") != -1 else 0
+        lambda x: 1 if str(x).find("Balkon") != -1 else 0
     )
     df["has_garden"] = df["exteriors"].apply(
-        lambda x: 1 if str(x).find("garden") != -1 else 0
+        lambda x: 1 if str(x).find("Tuin") != -1 else 0
     )
 
     # Time
@@ -184,7 +185,9 @@ def preprocess_data(df: pd.DataFrame, is_past: bool) -> pd.DataFrame:
         df = df[(df["date_sold"] != "na") & (df["date_list"] != "na")]
         df["date_sold"] = df["date_sold"].apply(map_dutch_month)
         df = df.dropna()
-        df["date_list"] = pd.to_datetime(df["date_list"])
+        locale.setlocale(locale.LC_TIME,'nl_NL') # en_us.utf-8
+        df["date_list"] = pd.to_datetime(df["date_list"], format="%d %B %Y")
+        locale.setlocale(locale.LC_TIME,'en_us') # en_us.utf-8
         df["date_sold"] = pd.to_datetime(df["date_sold"])
         df["ym_sold"] = df["date_sold"].apply(lambda x: x.to_period("M").to_timestamp())
         df["year_sold"] = df["date_sold"].apply(lambda x: x.year)

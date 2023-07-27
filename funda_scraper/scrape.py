@@ -50,13 +50,13 @@ class FundaScraper(object):
         """Return the corresponding urls."""
         if self.to_buy:
             return {
-                "close": f"{self.base_url}/koop/verkocht/{self.area}/",
-                "open": f"{self.base_url}/koop/{self.area}/",
+                "close": f'{self.base_url}/zoeken/koop?selected_area=%5B"{self.area}"%5D&availability=%5B"unavailable"%5D',
+                "open": f'{self.base_url}/zoeken/koop?selected_area=%5B"{self.area}"%5D',
             }
         else:
             return {
-                "close": f"{self.base_url}/huur/{self.area}/verhuurd/",
-                "open": f"{self.base_url}/huur/{self.area}/",
+                "close": f'{self.base_url}/zoeken/huur?selected_area=%5B"{self.area}"%5D&availability=%5B"unavailable"%5D',
+                "open": f'{self.base_url}/zoeken/huur?selected_area=%5B"{self.area}"%5D',
             }
 
     @property
@@ -80,7 +80,7 @@ class FundaScraper(object):
         """Scrape all the available housing items from one Funda search page."""
         response = requests.get(url, headers=config.header)
         soup = BeautifulSoup(response.text, "lxml")
-        house = soup.find_all(attrs={"data-object-url-tracking": "resultlist"})
+        house = soup.find_all(attrs={"class": "text-blue-2 visited:text-purple-1 cursor-pointer"})
         item_list = [h.get("href") for h in house]
         return list(set(item_list))
 
@@ -112,7 +112,7 @@ class FundaScraper(object):
         main_url = self.site_url["close"] if self.find_past else self.site_url["open"]
         for i in tqdm(range(0, self.n_pages + 1), disable=True):
             for repeat_id in range(self.n_tries):
-                item_list = self._get_links_from_one_page(main_url + f"p{i}")
+                item_list = self._get_links_from_one_page(main_url + f"&search_result={i}")
                 if len(item_list) == 0:
                     time.sleep(1)
                     continue
@@ -125,7 +125,7 @@ class FundaScraper(object):
         logger.info(
             f"*** Got all the urls. {len(urls)} houses found in {self.n_pages} pages. ***"
         )
-        self.links = ["https://www.funda.nl" + url for url in urls]
+        self.links = [url for url in urls]
 
     @staticmethod
     def get_value(soup: BeautifulSoup, selector: str) -> str:
